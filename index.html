@@ -16,6 +16,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         iframe {
@@ -23,10 +24,41 @@
             height: 100vh;
             border: none;
         }
+        
+        .close-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .close-button:hover {
+            background: #cc0000;
+        }
     </style>
 </head>
 <body>
-    <!-- Formulario embebido actualizado -->
-    <iframe src="https://96vxnn73.forms.app/formulario-sin-titulo" title="Formulario"></iframe>
+    <!-- Botón para cerrar -->
+    <button class="close-button" onclick="window.location.href='https://www.vendeygana.net/user/'">X</button>
+    
+    <!-- Nuevo formulario embebido -->
+    <iframe src="https://online.forms.app/respuestasdereportesdefa/amazonprime" title="Formulario"></iframe>
+    
+    <script>
+        // Opcional: puedes agregar aquí cualquier funcionalidad adicional con JavaScript
+    </script>
 </body>
 </html>
