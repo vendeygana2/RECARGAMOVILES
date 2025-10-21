@@ -408,7 +408,7 @@
                     Primero selecciona una operadora
                 </div>
                 <div class="amount-grid" id="amount-grid">
-                    <!-- Los montos se cargarán aquí dinámicamente -->
+                    <!-- Los montos se cargarán aquí automáticamente -->
                 </div>
             </div>
             
@@ -503,6 +503,18 @@
         // REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyj5DeZCgkHeI9dbpe518qTLoRhErPDDKamZjZvC8S8z0xZ9BegFk_JpSVrL0jJ4sUOw/exec';
         
+        // =============================================
+        // MONTOS PRE-DEFINIDOS - EDITAR AQUÍ CUANDO CAMBIEN
+        // =============================================
+        const montosPorOperadora = {
+            'Movistar': [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
+            'Movilnet': [150, 180, 270, 360, 450, 540, 630, 720, 810, 900, 990, 1080],
+            'Digitel': [120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320]
+        };
+        // =============================================
+        // FIN DE ZONA EDITABLE
+        // =============================================
+
         document.addEventListener('DOMContentLoaded', function() {
             // Elementos del DOM
             const operatorButtons = document.querySelectorAll('.operator-btn');
@@ -538,19 +550,17 @@
             const savedCedula = localStorage.getItem('cedulaRecargas');
             if (savedCedula) {
                 cedulaInput.value = savedCedula;
-                validateCedula(); // Validar la cédula cargada
+                validateCedula();
             }
             
             // Función para validar cédula
             function validateCedula() {
                 const cedula = cedulaInput.value.trim();
-                // Expresión regular: V, E o J opcional + 5 a 8 dígitos
                 const cedulaRegex = /^([VEJ])?(\d{5,8})$/i;
                 
                 if (cedulaRegex.test(cedula) && cedula.length <= 9) {
                     cedulaError.classList.remove('show');
                     isCedulaValid = true;
-                    // Guardar en localStorage
                     localStorage.setItem('cedulaRecargas', cedula.toUpperCase());
                     updatePayButtonState();
                     return true;
@@ -571,27 +581,14 @@
                 }
             }
             
-            // Función para cargar montos desde Google Sheets
-            async function loadMontos(operator) {
-                try {
-                    const response = await fetch(`${GOOGLE_SCRIPT_URL}?operadora=${operator}`);
-                    const result = await response.json();
-                    
-                    if (result.status === 'success') {
-                        return result.montos;
-                    } else {
-                        throw new Error(result.message);
-                    }
-                } catch (error) {
-                    console.error('Error cargando montos:', error);
-                    alert('Error al cargar los montos para ' + operator);
-                    return [];
-                }
-            }
-            
-            // Función para mostrar los botones de monto
-            function displayMontos(montos) {
+            // Función para mostrar los botones de monto (AHORA USA MONTOS LOCALES)
+            function displayMontos(operator) {
+                console.log('🔄 Cargando montos para:', operator);
+                
+                const montos = montosPorOperadora[operator] || [100, 200, 300];
                 amountGrid.innerHTML = '';
+                
+                console.log('💰 Montos a mostrar:', montos);
                 
                 montos.forEach(monto => {
                     const amountBtn = document.createElement('div');
@@ -663,7 +660,7 @@
             
             // Event listeners para los botones de operadora
             operatorButtons.forEach(button => {
-                button.addEventListener('click', async function() {
+                button.addEventListener('click', function() {
                     // Remover la clase 'selected' de todos los botones
                     operatorButtons.forEach(btn => btn.classList.remove('selected'));
                     
@@ -682,9 +679,8 @@
                     updateSummary();
                     updatePayButtonState();
                     
-                    // Cargar y mostrar los montos para esta operadora
-                    const montos = await loadMontos(selectedOperator);
-                    displayMontos(montos);
+                    // Cargar y mostrar los montos para esta operadora (LOCALES)
+                    displayMontos(selectedOperator);
                 });
             });
             
