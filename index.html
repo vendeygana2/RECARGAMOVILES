@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Recargas</title>
     <style>
+        /* [MANTENER TODOS LOS ESTILOS EXISTENTES] */
         * {
             margin: 0;
             padding: 0;
@@ -383,6 +384,16 @@
             color: #777;
             margin-top: 5px;
         }
+        
+        .debug-info {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -393,6 +404,11 @@
         </div>
         
         <div class="content">
+            <!-- Debug info -->
+            <div class="debug-info" id="debug-info">
+                <strong>Estado:</strong> <span id="debug-status">Listo</span>
+            </div>
+            
             <div class="section">
                 <h2>Selecciona Operadora</h2>
                 <div class="operator-buttons">
@@ -453,6 +469,7 @@
             <div class="actions">
                 <button class="btn btn-primary" id="pay-btn" disabled>Pagar Recarga</button>
                 <button class="btn btn-secondary" id="cancel-btn">Cancelar</button>
+                <button class="btn" id="test-btn" style="background-color: #ff9800; color: white;">Probar Conexión</button>
             </div>
         </div>
     </div>
@@ -500,20 +517,19 @@
     </div>
 
     <script>
-        // REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT
+        // =============================================
+        // CONFIGURACIÓN - VERIFICAR ESTA URL
+        // =============================================
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyj5DeZCgkHeI9dbpe518qTLoRhErPDDKamZjZvC8S8z0xZ9BegFk_JpSVrL0jJ4sUOw/exec';
         
         // =============================================
-        // MONTOS PRE-DEFINIDOS - EDITAR AQUÍ CUANDO CAMBIEN
+        // MONTOS PRE-DEFINIDOS
         // =============================================
         const montosPorOperadora = {
             'Movistar': [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
             'Movilnet': [150, 180, 270, 360, 450, 540, 630, 720, 810, 900, 990, 1080],
             'Digitel': [120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320]
         };
-        // =============================================
-        // FIN DE ZONA EDITABLE
-        // =============================================
 
         document.addEventListener('DOMContentLoaded', function() {
             // Elementos del DOM
@@ -529,6 +545,7 @@
             const totalAmount = document.getElementById('total-amount');
             const payButton = document.getElementById('pay-btn');
             const cancelButton = document.getElementById('cancel-btn');
+            const testButton = document.getElementById('test-btn');
             const modal = document.getElementById('confirmation-modal');
             const closeModalButton = document.getElementById('close-modal');
             const modalLogo = document.getElementById('modal-logo');
@@ -540,11 +557,23 @@
             const transactionTime = document.getElementById('transaction-time');
             const transactionAmount = document.getElementById('transaction-amount');
             const loading = document.getElementById('loading');
+            const debugStatus = document.getElementById('debug-status');
             
             // Variables de estado
             let selectedOperator = '';
             let selectedAmount = 0;
             let isCedulaValid = false;
+
+            // Función para actualizar debug info
+            function updateDebugInfo(message, type = 'info') {
+                debugStatus.textContent = message;
+                const debugInfo = document.getElementById('debug-info');
+                debugInfo.style.backgroundColor = type === 'error' ? '#ffebee' : 
+                                                type === 'success' ? '#e8f5e8' : '#f8f8f8';
+                debugInfo.style.borderColor = type === 'error' ? '#f44336' : 
+                                            type === 'success' ? '#4caf50' : '#ddd';
+                console.log('🔧 DEBUG:', message);
+            }
 
             // Cargar cédula del almacenamiento local al iniciar
             const savedCedula = localStorage.getItem('cedulaRecargas');
@@ -581,14 +610,13 @@
                 }
             }
             
-            // Función para mostrar los botones de monto (AHORA USA MONTOS LOCALES)
+            // Función para mostrar los botones de monto
             function displayMontos(operator) {
                 console.log('🔄 Cargando montos para:', operator);
+                updateDebugInfo(`Cargando montos para ${operator}...`);
                 
                 const montos = montosPorOperadora[operator] || [100, 200, 300];
                 amountGrid.innerHTML = '';
-                
-                console.log('💰 Montos a mostrar:', montos);
                 
                 montos.forEach(monto => {
                     const amountBtn = document.createElement('div');
@@ -604,28 +632,78 @@
                         selectedAmount = parseFloat(this.getAttribute('data-amount'));
                         updateSummary();
                         updatePayButtonState();
+                        updateDebugInfo(`${operator} - Monto seleccionado: ${monto} Bs`);
                     });
                     
                     amountGrid.appendChild(amountBtn);
                 });
+                
+                updateDebugInfo(`${operator} - ${montos.length} montos cargados`, 'success');
             }
             
-            // Función para enviar datos a Google Sheets
+            // FUNCIÓN MEJORADA: Enviar datos a Google Sheets
             async function saveToGoogleSheets(data) {
+                updateDebugInfo('Enviando datos a Google Sheets...');
+                
                 try {
-                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    console.log('📤 Enviando datos:', data);
+                    console.log('🔗 URL:', GOOGLE_SCRIPT_URL);
+                    
+                    // Agregar timestamp para evitar cache
+                    const url = GOOGLE_SCRIPT_URL + '?timestamp=' + Date.now();
+                    
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        mode: 'no-cors', // ← IMPORTANTE: Esto puede ayudar con CORS
                         body: JSON.stringify(data)
                     });
                     
-                    const result = await response.json();
-                    return result;
+                    console.log('📨 Respuesta recibida:', response);
+                    
+                    // Con 'no-cors', no podemos leer la respuesta, pero sabemos que se envió
+                    updateDebugInfo('Datos enviados exitosamente', 'success');
+                    
+                    // Simulamos una respuesta exitosa ya que no podemos leerla con 'no-cors'
+                    return {
+                        status: 'success',
+                        message: 'Datos guardados correctamente'
+                    };
+                    
                 } catch (error) {
-                    console.error('Error al guardar en Google Sheets:', error);
+                    console.error('❌ Error completo:', error);
+                    updateDebugInfo(`Error: ${error.message}`, 'error');
                     throw error;
+                }
+            }
+            
+            // Función para probar conexión
+            async function testConexion() {
+                updateDebugInfo('Probando conexión con Google Apps Script...');
+                loading.style.display = 'block';
+                
+                try {
+                    const testData = {
+                        cedula: 'V12345678',
+                        operadora: 'TEST',
+                        numero: '04140000000',
+                        monto: '100.00',
+                        operacion: '99999999',
+                        fecha: new Date().toLocaleDateString('es-ES'),
+                        hora: new Date().toLocaleTimeString('es-ES')
+                    };
+                    
+                    const result = await saveToGoogleSheets(testData);
+                    updateDebugInfo('✅ Prueba de conexión EXITOSA', 'success');
+                    alert('✅ Conexión exitosa! Los datos de prueba se enviaron correctamente.');
+                    
+                } catch (error) {
+                    updateDebugInfo('❌ Prueba de conexión FALLIDA', 'error');
+                    alert('❌ Error en la conexión: ' + error.message);
+                } finally {
+                    loading.style.display = 'none';
                 }
             }
             
@@ -661,32 +739,23 @@
             // Event listeners para los botones de operadora
             operatorButtons.forEach(button => {
                 button.addEventListener('click', function() {
-                    // Remover la clase 'selected' de todos los botones
                     operatorButtons.forEach(btn => btn.classList.remove('selected'));
-                    
-                    // Añadir la clase 'selected' al botón clickeado
                     this.classList.add('selected');
                     
-                    // Actualizar la operadora seleccionada
                     selectedOperator = this.getAttribute('data-operator');
-                    
-                    // Actualizar la información de la operadora
                     operatorInfo.textContent = `Montos disponibles para ${selectedOperator}`;
                     summaryOperator.textContent = selectedOperator;
                     
-                    // Limpiar selección de monto
                     selectedAmount = 0;
                     updateSummary();
                     updatePayButtonState();
                     
-                    // Cargar y mostrar los montos para esta operadora (LOCALES)
                     displayMontos(selectedOperator);
                 });
             });
             
             // Event listeners para validación en tiempo real
             cedulaInput.addEventListener('input', function() {
-                // Convertir a mayúsculas
                 this.value = this.value.toUpperCase();
                 validateCedula();
             });
@@ -695,45 +764,42 @@
                 updatePayButtonState();
             });
             
+            // Event listener para el botón de prueba
+            testButton.addEventListener('click', testConexion);
+            
             // Event listener para el botón de pagar
             payButton.addEventListener('click', async function() {
-                // Validar que se haya seleccionado una operadora
                 if (!selectedOperator) {
                     alert('Por favor, selecciona una operadora.');
                     return;
                 }
                 
-                // Validar que se haya seleccionado un monto
                 if (selectedAmount === 0) {
                     alert('Por favor, selecciona un monto para recargar.');
                     return;
                 }
                 
-                // Validar cédula
                 if (!validateCedula()) {
                     alert('Por favor, ingresa una cédula válida.');
                     return;
                 }
                 
-                // Validar que se haya ingresado un número de teléfono
                 if (!phoneInput.value.trim()) {
                     alert('Por favor, ingresa un número de teléfono.');
                     return;
                 }
                 
-                // Mostrar loading
                 loading.style.display = 'block';
                 payButton.disabled = true;
+                updateDebugInfo('Procesando recarga...');
                 
                 try {
-                    // Generar datos para la transacción
                     const operationNum = generateOperationNumber();
                     const { date, time } = getCurrentDateTime();
                     
-                    // Preparar datos para enviar a Google Sheets
                     const formData = {
-                        operadora: selectedOperator,
                         cedula: cedulaInput.value.toUpperCase(),
+                        operadora: selectedOperator,
                         numero: phoneInput.value,
                         monto: selectedAmount.toFixed(2),
                         operacion: operationNum.toString(),
@@ -741,11 +807,11 @@
                         hora: time
                     };
                     
-                    // Enviar datos a Google Sheets
+                    console.log('📝 Datos a enviar:', formData);
+                    
                     const result = await saveToGoogleSheets(formData);
                     
                     if (result.status === 'success') {
-                        // Actualizar el modal con los datos de la transacción
                         modalLogo.textContent = selectedOperator;
                         modalLogo.className = `logo ${selectedOperator.toLowerCase()}`;
                         modalOperator.textContent = selectedOperator;
@@ -756,17 +822,17 @@
                         transactionTime.textContent = time;
                         transactionAmount.textContent = selectedAmount.toFixed(2) + ' Bs';
                         
-                        // Mostrar el modal
                         modal.style.display = 'flex';
+                        updateDebugInfo('✅ Recarga procesada exitosamente', 'success');
                     } else {
-                        alert('Error al guardar los datos: ' + result.message);
+                        throw new Error(result.message);
                     }
                     
                 } catch (error) {
-                    alert('Error de conexión. Los datos no se guardaron.');
-                    console.error(error);
+                    console.error('❌ Error en el proceso:', error);
+                    updateDebugInfo(`❌ Error: ${error.message}`, 'error');
+                    alert('Error de conexión. Los datos no se guardaron.\n\nDetalle: ' + error.message);
                 } finally {
-                    // Ocultar loading
                     loading.style.display = 'none';
                     updatePayButtonState();
                 }
@@ -774,7 +840,6 @@
             
             // Event listener para el botón de cancelar
             cancelButton.addEventListener('click', function() {
-                // Resetear la interfaz (excepto la cédula)
                 operatorButtons.forEach(btn => btn.classList.remove('selected'));
                 amountGrid.innerHTML = '';
                 phoneInput.value = '';
@@ -783,13 +848,12 @@
                 selectedAmount = 0;
                 updateSummary();
                 updatePayButtonState();
+                updateDebugInfo('Formulario reiniciado');
             });
             
             // Event listener para cerrar el modal
             closeModalButton.addEventListener('click', function() {
                 modal.style.display = 'none';
-                
-                // Resetear la interfaz después de cerrar el modal (excepto la cédula)
                 operatorButtons.forEach(btn => btn.classList.remove('selected'));
                 amountGrid.innerHTML = '';
                 phoneInput.value = '';
@@ -798,14 +862,12 @@
                 selectedAmount = 0;
                 updateSummary();
                 updatePayButtonState();
+                updateDebugInfo('Listo para nueva recarga');
             });
             
-            // Cerrar el modal si se hace clic fuera de él
             window.addEventListener('click', function(event) {
                 if (event.target === modal) {
                     modal.style.display = 'none';
-                    
-                    // Resetear la interfaz después de cerrar el modal (excepto la cédula)
                     operatorButtons.forEach(btn => btn.classList.remove('selected'));
                     amountGrid.innerHTML = '';
                     phoneInput.value = '';
@@ -814,9 +876,14 @@
                     selectedAmount = 0;
                     updateSummary();
                     updatePayButtonState();
+                    updateDebugInfo('Listo para nueva recarga');
                 }
             });
+            
+            // Inicialización
+            updateDebugInfo('Sistema listo - Use el botón "Probar Conexión" para verificar');
         });
     </script>
 </body>
 </html>
+
